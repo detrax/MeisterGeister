@@ -26,7 +26,7 @@ using Un4seen.Bass;
 
 using Q42.HueApi;
 using Q42.HueApi.ColorConverters.Original;
-using Q42.HueApi.ColorConverters.OriginalWithModel;
+//using Q42.HueApi.ColorConverters.OriginalWithModel;
 using Q42.HueApi.ColorConverters.HSB;
 using Q42.HueApi.ColorConverters;
 using MeisterGeister.ViewModel.Settings;

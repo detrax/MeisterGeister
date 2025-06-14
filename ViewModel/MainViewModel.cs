@@ -24,7 +24,7 @@ using Q42.HueApi.Interfaces;
 using Q42.HueApi;
 using Q42.HueApi.Models.Bridge;
 using Q42.HueApi.ColorConverters.Original;
-using Q42.HueApi.ColorConverters.OriginalWithModel;
+//using Q42.HueApi.ColorConverters.OriginalWithModel;
 using Q42.HueApi.ColorConverters.HSB;
 using Q42.HueApi.ColorConverters;
 
@@ -551,7 +551,8 @@ namespace MeisterGeister.ViewModel
             {
                 System.Windows.Controls.Primitives.ToggleButton tbtn = aPlayerVM.ErwPlayerThemeListe.FirstOrDefault(t => t.VM.Theme == obj as MeisterGeister.Model.Audio_Theme).tbtnTheme;
                 tbtn.IsChecked =  !tbtn.IsChecked.Value;
-                aPlayerVM.ThemeButton_Checked(tbtn, null);
+                if (Global.MainVM.HUEAudioIntegration)
+                    aPlayerVM.ThemeButton_Checked(tbtn, null);
             }
             else
                 if (obj is MeisterGeister.Model.Audio_Playlist)
