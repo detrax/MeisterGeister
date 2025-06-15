@@ -324,7 +324,7 @@ namespace MeisterGeister.Daten
                 commands = StripSqlComments(commands);
 
                 string[] statements = null;
-                statements = commands.Split(new string[] { "GO" + Environment.NewLine, ";" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                statements = commands.Split(new string[] {"GO" + Environment.NewLine, "GO\n", ";" + Environment.NewLine, ";\n" }, StringSplitOptions.RemoveEmptyEntries);
 
                 //Trim auf alle
                 for (int i = 0; i < statements.Length; i++)

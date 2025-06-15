@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 
 using Q42.HueApi;
 using Q42.HueApi.ColorConverters.Original;
-using Q42.HueApi.ColorConverters.OriginalWithModel;
+//using Q42.HueApi.ColorConverters.OriginalWithModel;
 using Q42.HueApi.ColorConverters.HSB;
 using Q42.HueApi.ColorConverters;
 using System.Linq;
