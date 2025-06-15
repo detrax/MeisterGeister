@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json;
 using System.IO;
-using Aq.ExpressionJsonSerializer;
+//using Aq.ExpressionJsonSerializer;
 
 namespace MeisterGeister.ViewModel.Kampf.Logic.Modifikatoren
 {
@@ -302,6 +302,55 @@ namespace MeisterGeister.ViewModel.Kampf.Logic.Modifikatoren
                 o.CollectionChanged -= d_CollectionChanged;
         }
 
+        #region Neu ohne Aq
+        public class ExpressionWrapper
+        {
+            public string Operator { get; set; }
+            public int ModWert { get; set; }
+
+            public Expression<Func<int, int>> ToExpression()
+            {
+                var param = Expression.Parameter(typeof(int), "wert");
+                var mod = Expression.Constant(ModWert, typeof(int));
+
+                Expression body = Operator switch
+                {
+                    "+" => Expression.Add(param, mod),
+                    "-" => Expression.Subtract(param, mod),
+                    "*" => Expression.Multiply(param, mod),
+                    "/" => Expression.Call(typeof(CustomModifikatorFactory), "Div", null, param, mod),
+                    "=" => mod,
+                    _ => throw new NotSupportedException($"Operator {Operator} nicht unterstützt")
+                };
+
+                return Expression.Lambda<Func<int, int>>(body, param);
+            }
+
+            public static ExpressionWrapper FromExpression(Expression<Func<int, int>> expr)
+            {
+                if (expr.Body is BinaryExpression bin && bin.Right is ConstantExpression ce && ce.Value is int val)
+                {
+                    string op = bin.NodeType switch
+                    {
+                        ExpressionType.Add => "+",
+                        ExpressionType.Subtract => "-",
+                        ExpressionType.Multiply => "*",
+                        ExpressionType.Divide => "/",
+                        _ => throw new NotSupportedException("Nicht unterstützter Binäroperator")
+                    };
+                    return new ExpressionWrapper { Operator = op, ModWert = val };
+                }
+                if (expr.Body is ConstantExpression c && c.Value is int val2)
+                {
+                    return new ExpressionWrapper { Operator = "=", ModWert = val2 };
+                }
+                throw new NotSupportedException("Kann Ausdruck nicht serialisieren");
+            }
+        }
+
+
+        #endregion
+
         #region De/Serialisierung
         /// <summary>
         /// Serialisiert einen ICustomModifikator zu JSON, was in der Datenbank abgelegt werden kann.
@@ -310,6 +359,7 @@ namespace MeisterGeister.ViewModel.Kampf.Logic.Modifikatoren
         /// <returns></returns>
         public static string Serialize(ICustomModifikator mod)
         {
+            /*
             // Impromptu Proxy entfernen
             var obj = Impromptu.UndoActLike(mod);
             // Klon erstellen, um das original nicht zu verändern (ist protected also per Reflection)
@@ -323,7 +373,29 @@ namespace MeisterGeister.ViewModel.Kampf.Logic.Modifikatoren
             string s = null;
             //in JSON umwandeln - mit speziellem Expressionconverter
             s = Newtonsoft.Json.JsonConvert.SerializeObject(d, new ExpressionJsonConverter(Assembly.GetAssembly(typeof(ICustomModifikator))) );
-            return s;
+            return s;*/
+
+            var obj = Impromptu.UndoActLike(mod);
+            var obj2 = Impromptu.InvokeMember(obj, "MemberwiseClone");
+            var d = obj2 as IDictionary<string, object>;
+
+            var methoden = d["Methoden"] as IDictionary<string, Expression<Func<int, int>>>;
+
+            var wrapperDict = new Dictionary<string, ExpressionWrapper>();
+            foreach (var kvp in methoden)
+            {
+                if (kvp.Value != null)
+                {
+                    wrapperDict[kvp.Key] = ExpressionWrapper.FromExpression(kvp.Value);
+                }
+            }
+
+            d["Methoden"] = wrapperDict;
+
+            // Typnamen als Strings
+            d["Types"] = ((List<string>)d["Types"]).ToList();
+
+            return JsonConvert.SerializeObject(d);
         }
 
 
@@ -334,6 +406,7 @@ namespace MeisterGeister.ViewModel.Kampf.Logic.Modifikatoren
         /// <returns></returns>
         public static ICustomModifikator Deserialize(string str)
         {
+            /*
             IDictionary<string, object> d = null;
             //Converter für Expressions
             ExpressionJsonConverter converter =  new ExpressionJsonConverter(Assembly.GetAssembly(typeof(ICustomModifikator)) );
@@ -359,6 +432,31 @@ namespace MeisterGeister.ViewModel.Kampf.Logic.Modifikatoren
             }
             //Mit Impromptu wieder die gespeicherten Modifikator-Interfaces anwenden
             Type[] types = ((List<string>)d["Types"]).Select(t => Type.GetType(t)).ToArray();
+            return Impromptu.ActLike<ICustomModifikator>(d.ToExpando(), types);
+            */
+
+            var d = JsonConvert.DeserializeObject<Dictionary<string, object>>(str);
+
+            var methodenRaw = (JObject)d["Methoden"];
+            var methoden = new Dictionary<string, Expression<Func<int, int>>>();
+            foreach (var prop in methodenRaw.Properties())
+            {
+                var wrapper = prop.Value.ToObject<ExpressionWrapper>();
+                methoden[prop.Name] = wrapper.ToExpression();
+                d[prop.Name] = methoden[prop.Name].Compile();
+            }
+            d["Methoden"] = methoden;
+
+            var typeNames = ((JArray)d["Types"]).ToObject<List<string>>();
+            d["Types"] = typeNames;
+
+            foreach (var filterName in new[] { "Zaubername", "Talentname" })
+            {
+                if (d.TryGetValue(filterName, out var val) && val is JArray ja)
+                    d[filterName] = ja.ToObject<SortedSet<string>>();
+            }
+
+            var types = typeNames.Select(Type.GetType).Where(t => t != null).ToArray();
             return Impromptu.ActLike<ICustomModifikator>(d.ToExpando(), types);
         }
         #endregion
