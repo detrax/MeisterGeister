@@ -232,6 +232,33 @@ namespace MeisterGeister.View.SpielerScreen
             catch { }
         }
 
+        public static void SetVideo(string pfad, ViewModel.SpielerScreen.SpielerScreenControlViewModel vm, Stretch stretch = Stretch.Uniform)
+        {
+            try
+            {
+                var video = new MediaElement()
+                { 
+                    Stretch = stretch 
+                };
+
+                video.BeginInit();
+                video.Source = new Uri(pfad, UriKind.Relative);
+
+                video.SetBinding(MediaElement.IsMutedProperty, new Binding("VideoIsMuted") { Source = vm });
+                video.SetBinding(MediaElement.LoadedBehaviorProperty, new Binding("MediaPlayerSpielerScreenLoadedBehavior") { Source = vm });
+                vm.MediaPlayerLoadedBehavior = MediaState.Play;
+                vm.MediaPlayerSpielerScreenLoadedBehavior = MediaState.Play;
+                video.EndInit();
+
+                var grid = new Grid();
+                grid.Children.Add(video);
+                grid.DataContext = SpielerScreenControlViewModel.Instance;
+
+                SetContent(grid);
+            }
+            catch { }
+        }
+
         public static void SetSlideShow(ViewModel.SpielerScreen.SpielerScreenControlViewModel vm)
         {
             Instance.DataContext = vm;

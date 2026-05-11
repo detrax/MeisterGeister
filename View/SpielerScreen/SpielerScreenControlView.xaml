@@ -17,14 +17,17 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
                     <ColumnDefinition />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="28" />
                 </Grid.RowDefinitions>
                 <CheckBox Grid.Column="0" Margin="4" VerticalAlignment="Center" ToolTip="In Slide-Show einbeziehen" IsChecked="{Binding IsInSlideShow}" />
-                <Image Grid.Column="1" Source="{Binding Pfad, IsAsync=True, Converter={StaticResource LoadCachedImageConverter}}" />
-                <TextBlock Grid.Column="2" Text="{Binding Name}" Margin="4,0,0,0" />
+                <Image Grid.Column="1" Source="{Binding Pfad, IsAsync=True, Converter={StaticResource LoadCachedImageConverter}}" Visibility="{Binding IsImage, Converter={StaticResource BooleanToVisibilityConverter1}, TargetNullValue=Collapsed}" />
+                <MediaElement Grid.Column="1" Source="{Binding Pfad, IsAsync=True}" IsMuted="True" LoadedBehavior="Pause" Visibility="{Binding IsVideo, Converter={StaticResource BooleanToVisibilityConverter1}, TargetNullValue=Collapsed}" />
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding Name}" Margin="4,0,0,0" />
+                <Image Grid.Column="3" Height="20" Margin="10,0,0,0" VerticalAlignment="Center" ToolTip="Video" Source="/Images/Icons/General/play_grau.png" Visibility="{Binding IsVideo, Converter={StaticResource BooleanToVisibilityConverter1}, TargetNullValue=Collapsed}" />
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
@@ -52,6 +55,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
                             <Button Height="23" HorizontalAlignment="Left" Margin="5" VerticalAlignment="Center" Command="{Binding OnOpenImage}">
@@ -69,7 +74,7 @@
                             <Button Height="23" HorizontalAlignment="Left" Margin="5" VerticalAlignment="Center" Command="{Binding OnOpenDirectory}">
                                 <Button.ToolTip>
                                     <StackPanel>
-                                        <TextBlock Text="Einen kompletten Ordner mit Bildern öffnen." />
+                                        <TextBlock Text="Einen kompletten Ordner mit Bildern/Videos öffnen." />
                                         <TextBlock FontStyle="Italic" Text="Ordner können auch per Drag&amp;Drop eingefügt werden." Margin="0,5,0,0" />
                                     </StackPanel>
                                 </Button.ToolTip>
@@ -95,7 +100,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="0" Grid.Row="1" Margin="6" Orientation="Vertical">
                             <StackPanel Orientation="Horizontal">
-                                <Button Command="{Binding OnReLoadImages}" Height="18" Width="18" ToolTip="Bilder neu laden">
+                                <Button Command="{Binding OnReLoadMedia}" Height="18" Width="18" ToolTip="Medien neu laden">
                                     <Image Source="/DSA MeisterGeister;component/Images/Icons/General/refresh.png" Margin="-2"/>
                                 </Button>
                                 <Button Command="{Binding OnOpenPath}" Height="18" Width="18" ToolTip="Ordnerpfad im Explorer öffnen...">
@@ -120,9 +125,9 @@
                                 </StackPanel>
                             </CheckBox.Content>
                         </CheckBox>
-                        <ListBox Grid.Column="0" Grid.Row="2" Margin="6" Name="_listBoxDirectory" ItemsSource="{Binding FilteredImages}" Background="Transparent" SelectedItem="{Binding SelectedImageObject}" ToolTip="Ordner-Inhalt" ItemTemplate="{StaticResource ImageListBoxItemTemplate}" KeyDown="ListBoxDirectory_KeyDown" MouseDoubleClick="_listBoxDirectory_MouseDoubleClick" />
+                        <ListBox Grid.Column="0" Grid.Row="2" Grid.RowSpan="3" Margin="6" Name="_listBoxDirectory" ItemsSource="{Binding FilteredImages}" Background="Transparent" SelectedItem="{Binding SelectedMediaObject}" ToolTip="Ordner-Inhalt" ItemTemplate="{StaticResource ImageListBoxItemTemplate}" KeyDown="ListBoxDirectory_KeyDown" MouseDoubleClick="_listBoxDirectory_MouseDoubleClick" />
                         <CheckBox Grid.Column="0" Grid.Row="2" Margin="16,-8" VerticalAlignment="Top" ToolTip="Alle In Slide-Show einbeziehen bzw. nicht einbeziehen." Command="{Binding OnIsInSlideShowAll}" IsChecked="{Binding IsInSlideShowAll}" />
-                        <Viewbox Grid.Column="1" Grid.Row="2" Name="viewboxImage" Margin="6" MinWidth="226">
+                        <Viewbox Grid.Column="1" Grid.Row="2" Grid.RowSpan="3" Name="viewboxImage" Margin="6" MinWidth="226" Visibility="{Binding SelectedMediaObject.IsImage, Converter={StaticResource BooleanToVisibilityConverter1}, TargetNullValue=Collapsed}">
                             <Viewbox.InputBindings>
                                 <MouseBinding MouseAction="MiddleClick" Command="{Binding OnOpenImageExtern}" />
                             </Viewbox.InputBindings>
@@ -155,6 +160,47 @@
                                 <s:SpielerPointer Margin="{Binding PointerMargin}" />
                             </Grid>
                         </Viewbox>
+                        <Viewbox Grid.Column="1" Grid.Row="2" Name="viewboxVideo" Margin="6" MinWidth="226" Visibility="{Binding SelectedMediaObject.IsVideo, Converter={StaticResource BooleanToVisibilityConverter1}, TargetNullValue=Collapsed, FallbackValue=Collapsed}">
+                            <Viewbox.InputBindings>
+                                <MouseBinding MouseAction="MiddleClick" Command="{Binding OnOpenImageExtern}" />
+                            </Viewbox.InputBindings>
+                            <Viewbox.ToolTip>
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="{Binding SelectedImagePath}" />
+                                    <TextBlock Text="Ein Mittel-Klick öffnet das Video extern." />
+                                </StackPanel>
+                            </Viewbox.ToolTip>
+                            <MediaElement Grid.Row="0" Source="{Binding SelectedVideo, IsAsync=True}" LoadedBehavior="{Binding MediaPlayerLoadedBehavior}" IsMuted="True" />
+                        </Viewbox>
+                        <GroupBox Grid.Column="1" Grid.Row="3" Margin="10" Header="Spieler-Fenster Medien Player - Steuerung" Visibility="{Binding SelectedMediaObject.IsVideo, Converter={StaticResource BooleanToVisibilityConverter1}, TargetNullValue=Collapsed, FallbackValue=Collapsed}">
+                            <StackPanel Margin="10" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top">
+                                <Button Width="40" Height="40" Margin="5,0" Command="{Binding OnVideoMuting}" ToolTip="Ton aus/an">
+                                    <Image>
+                                        <Image.Style>
+                                            <Style TargetType="Image">
+                                                <Style.Setters>
+                                                    <Setter Property="Source" Value="pack://application:,,,/DSA MeisterGeister;component/Images/Icons/General/speaker.png" />
+                                                </Style.Setters>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding VideoIsMuted}" Value="True">
+                                                        <Setter Property="Source" Value="pack://application:,,,/DSA MeisterGeister;component/Images/Icons/General/speaker-mute.png" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Image.Style>
+                                    </Image>
+                                </Button>
+                                <Button Width="40" Height="40" Margin="5,0" Command="{Binding OnVideoPlay}" ToolTip="Video abspielen">
+                                    <Image Source="pack://application:,,,/DSA MeisterGeister;component/Images/Icons/General/play.png" />
+                                </Button>
+                                <Button Width="40" Height="40" Margin="5,0" Command="{Binding OnVideoPause}" ToolTip="Video pausieren">
+                                    <Image Source="pack://application:,,,/DSA MeisterGeister;component/Images/Icons/General/pause.png" />
+                                </Button>
+                                <Button Width="40" Height="40" Margin="5,0" Command="{Binding OnVideoStop}" ToolTip="Video stoppen">
+                                    <Image Source="pack://application:,,,/DSA MeisterGeister;component/Images/Icons/General/stop.png" />
+                                </Button>
+                            </StackPanel>
+                        </GroupBox>
                     </Grid>
                 </Border>
             </TabItem>
@@ -222,7 +268,7 @@
                     <Image Source="/DSA MeisterGeister;component/Images/Icons/bodenplan.png" Margin="4,6,4,14" />
                 </Grid>
             </Button>
-            <Button Grid.Column="0" Grid.Row="2" Margin="2" Height="45" Command="{Binding OnShowImage}" Width="45" ToolTip="Den Spielern das ausgewählte Bild zeigen. Oder Doppel-Klick auf ein Bild der Liste.">
+            <Button Grid.Column="0" Grid.Row="2" Margin="2" Height="45" Command="{Binding OnShowImage}" Width="45" ToolTip="Den Spielern das ausgewählte Bild/Video zeigen. Oder Doppel-Klick auf ein Bild der Liste.">
                 <Grid>
                     <Image Source="/DSA MeisterGeister;component/Images/Icons/General/screen.png"/>
                     <Image Source="/DSA MeisterGeister;component/Images/Icons/pinsel.png" Margin="4,6,4,14" />

@@ -31,7 +31,11 @@ namespace MeisterGeister.ViewModel.SpielerScreen
         private string _selectedImagePath = string.Empty;
         private string _currentSlideShowImage = string.Empty;
         private BitmapImage _selectedImage = null;
-        private ImageItem _selectedImageObject = null;
+        private MediaItem _selectedMediaObject = null;
+        private Uri _selectedVideo = null;
+        private bool _videoIsMuted = false;
+        private MediaState _mediaPlayerLoadedBehavior = MediaState.Manual;
+        private MediaState _mediaPlayerSpielerScreenLoadedBehavior = MediaState.Manual;
         private bool _pathNotFound = true;
         private bool _isImageStretch = true;
         private bool _slideShowRunning = false;
@@ -40,7 +44,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
 
         // Listen
         private List<System.Windows.Forms.Screen> _screenList = System.Windows.Forms.Screen.AllScreens.ToList();
-        private List<ImageItem> _images = null;
+        private List<MediaItem> _images = null;
 
         #endregion
 
@@ -89,7 +93,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             set
             {
                 _directoryPath = value;
-                LoadImagesFromDir(_directoryPath);
+                LoadMediaFromDir(_directoryPath);
                 OnChanged("DirectoryPath");
             }
         }
@@ -125,15 +129,55 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
-        public ImageItem SelectedImageObject
+        public Uri SelectedVideo
         {
-            get { return _selectedImageObject; }
+            get { return _selectedVideo; }
             set
             {
-                _selectedImageObject = value;
+                _selectedVideo = value;
+                OnChanged("SelectedVideo");
+            }
+        }
+
+        public bool VideoIsMuted
+        {
+            get { return _videoIsMuted; }
+            set
+            {
+                _videoIsMuted = value;
+                OnChanged("VideoIsMuted");
+            }
+        }
+
+        public MediaState MediaPlayerLoadedBehavior
+        {
+            get { return _mediaPlayerLoadedBehavior; }
+            set
+            {
+                _mediaPlayerLoadedBehavior = value;
+                OnChanged("MediaPlayerLoadedBehavior");
+            }
+        }
+
+        public MediaState MediaPlayerSpielerScreenLoadedBehavior
+        {
+            get { return _mediaPlayerSpielerScreenLoadedBehavior; }
+            set
+            {
+                _mediaPlayerSpielerScreenLoadedBehavior = value;
+                OnChanged("MediaPlayerSpielerScreenLoadedBehavior");
+            }
+        }
+
+        public MediaItem SelectedMediaObject
+        {
+            get { return _selectedMediaObject; }
+            set
+            {
+                _selectedMediaObject = value;
                 if (value != null)
                     SelectedImagePath = value.Pfad;
-                OnChanged("SelectedImageObject");
+                OnChanged("SelectedMediaObject");
             }
         }
 
@@ -163,7 +207,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             set
             {
                 Einstellungen.SpielerScreenUnterordnerEinbeziehen = value;
-                ReLoadImages();
+                ReLoadMedia();
                 OnChanged("IsUnterordnerEinbeziehen");
             }
         }
@@ -262,7 +306,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
-        public List<ImageItem> Images
+        public List<MediaItem> Images
         {
             get { return _images; }
             set
@@ -272,8 +316,8 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
-        private List<ImageItem> _filteredImages = null;
-        public List<ImageItem> FilteredImages
+        private List<MediaItem> _filteredImages = null;
+        public List<MediaItem> FilteredImages
         {
             get { return _filteredImages; }
             set
@@ -299,14 +343,14 @@ namespace MeisterGeister.ViewModel.SpielerScreen
 
         #region //---- COMMANDS ----
 
-        private Base.CommandBase onReLoadImages = null;
-        public Base.CommandBase OnReLoadImages
+        private Base.CommandBase onReLoadMedia = null;
+        public Base.CommandBase OnReLoadMedia
         {
             get
             {
-                if (onReLoadImages == null)
-                    onReLoadImages = new Base.CommandBase(ReLoadImages, null);
-                return onReLoadImages;
+                if (onReLoadMedia == null)
+                    onReLoadMedia = new Base.CommandBase(ReLoadMedia, null);
+                return onReLoadMedia;
             }
         }
 
@@ -415,7 +459,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             get
             {
                 if (onShowImage == null)
-                    onShowImage = new Base.CommandBase(ShowImage, null);
+                    onShowImage = new Base.CommandBase(ShowMedia, null);
                 return onShowImage;
             }
         }
@@ -461,6 +505,50 @@ namespace MeisterGeister.ViewModel.SpielerScreen
                 if (onIsInSlideShowAll == null)
                     onIsInSlideShowAll = new Base.CommandBase(SetInSlideShowAll, null);
                 return onIsInSlideShowAll;
+            }
+        }
+
+        private Base.CommandBase onVideoMuting = null;
+        public Base.CommandBase OnVideoMuting
+        {
+            get
+            {
+                if (onVideoMuting == null)
+                    onVideoMuting = new Base.CommandBase(VideoMuting, null);
+                return onVideoMuting;
+            }
+        }
+
+        private Base.CommandBase onVideoPlay = null;
+        public Base.CommandBase OnVideoPlay
+        {
+            get
+            {
+                if (onVideoPlay == null)
+                    onVideoPlay = new Base.CommandBase(VideoPlay, null);
+                return onVideoPlay;
+            }
+        }
+
+        private Base.CommandBase onVideoPause = null;
+        public Base.CommandBase OnVideoPause
+        {
+            get
+            {
+                if (onVideoPause == null)
+                    onVideoPause = new Base.CommandBase(VideoPause, null);
+                return onVideoPause;
+            }
+        }
+
+        private Base.CommandBase onVideoStop = null;
+        public Base.CommandBase OnVideoStop
+        {
+            get
+            {
+                if (onVideoStop == null)
+                    onVideoStop = new Base.CommandBase(VideoStop, null);
+                return onVideoStop;
             }
         }
 
@@ -560,9 +648,12 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             SpielerWindow.SetImage(Global.SelectedHeld.Bild, (IsImageStretch == true) ? Stretch.Uniform : Stretch.None);
             SlideShowStop();
         }
-        public void ShowImage(object sender = null)
+        public void ShowMedia(object sender = null)
         {
-            SpielerWindow.SetImage(SelectedImagePath, (IsImageStretch == true) ? Stretch.Uniform : Stretch.None);
+            if (SelectedMediaObject.IsVideo)
+                SpielerWindow.SetVideo(SelectedImagePath, this, (IsImageStretch == true) ? Stretch.Uniform : Stretch.None);
+            else
+                SpielerWindow.SetImage(SelectedImagePath, (IsImageStretch == true) ? Stretch.Uniform : Stretch.None);
             SlideShowStop();
         }
 
@@ -591,7 +682,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             try
             {
                 // Bild
-                SelectImage(SelectedImagePath);
+                SelectMedia(SelectedImagePath);
             }
             catch
             {
@@ -599,25 +690,37 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
-        private void SelectImage(string path)
+        private void SelectMedia(string path)
         {
             System.Windows.Threading.DispatcherOperation op =
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (System.Threading.ThreadStart)delegate ()
                 {
                     try
                     {
-                        BitmapImage bmi = new BitmapImage();
-                        bmi.BeginInit();
-                        bmi.CacheOption = BitmapCacheOption.OnLoad;
-                        bmi.UriSource = new Uri(path, UriKind.Relative);
-                        bmi.EndInit();
+                        if (!SelectedMediaObject.IsVideo)
+                        {
+                            SelectedVideo = null;
 
-                        bmi.Freeze();		// freeze image source, used to move it across the thread
-                        SelectedImage = bmi;
+                            BitmapImage bmi = new BitmapImage();
+                            bmi.BeginInit();
+                            bmi.CacheOption = BitmapCacheOption.OnLoad;
+                            bmi.UriSource = new Uri(path, UriKind.Relative);
+                            bmi.EndInit();
+
+                            bmi.Freeze();       // freeze image source, used to move it across the thread
+                            SelectedImage = bmi;
+                        }
+                        else
+                        {
+                            SelectedImage = null;
+
+                            MediaPlayerLoadedBehavior = MediaState.Play;
+                            SelectedVideo = new Uri(path, UriKind.Relative);
+                        }
                     }
                     catch (Exception)
                     {
-                        PopUp("Bild konnte nicht geladn werden:\n" + path);
+                        PopUp("Bild/Video konnte nicht geladn werden:\n" + path);
                     }
                 });
         }
@@ -644,12 +747,12 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
-        private void ReLoadImages(object sender = null)
+        private void ReLoadMedia(object sender = null)
         {
-            LoadImagesFromDir(DirectoryPath);
+            LoadMediaFromDir(DirectoryPath);
         }
 
-        public void LoadImagesFromDir(string pfad)
+        public void LoadMediaFromDir(string pfad)
         {
             if (string.IsNullOrWhiteSpace(pfad) || !Directory.Exists(pfad))
             {
@@ -663,6 +766,9 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             if (IsUnterordnerEinbeziehen)
                 dirOption = SearchOption.AllDirectories;
 
+            List<MediaItem> fileList = new List<MediaItem>();
+
+            // Bilder
             string[] filesBmp = Directory.GetFiles(pfad, "*.bmp", dirOption);
             string[] filesGif = Directory.GetFiles(pfad, "*.gif", dirOption);
             string[] filesJpg = Directory.GetFiles(pfad, "*.jpg", dirOption);
@@ -673,27 +779,38 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             string[] filesTif = Directory.GetFiles(pfad, "*.tif", dirOption);
             string[] filesTiff = Directory.GetFiles(pfad, "*.tiff", dirOption);
 
-            List<ImageItem> fileList = new List<ImageItem>();
-            AddImages(fileList, filesBmp);
-            AddImages(fileList, filesBmp);
-            AddImages(fileList, filesGif);
-            AddImages(fileList, filesJpg);
-            AddImages(fileList, filesJpeg);
-            AddImages(fileList, filesJpe);
-            AddImages(fileList, filesJfif);
-            AddImages(fileList, filesPng);
-            AddImages(fileList, filesTif);
-            AddImages(fileList, filesTiff);
+            AddMedia(fileList, filesBmp);
+            AddMedia(fileList, filesBmp);
+            AddMedia(fileList, filesGif);
+            AddMedia(fileList, filesJpg);
+            AddMedia(fileList, filesJpeg);
+            AddMedia(fileList, filesJpe);
+            AddMedia(fileList, filesJfif);
+            AddMedia(fileList, filesPng);
+            AddMedia(fileList, filesTif);
+            AddMedia(fileList, filesTiff);
+
+            // Videos
+            // https://learn.microsoft.com/de-de/windows/win32/medfound/supported-media-formats-in-media-foundation
+            string[] filesAvi = Directory.GetFiles(pfad, "*.avi", dirOption);
+            string[] filesWmv = Directory.GetFiles(pfad, "*.wmv", dirOption);
+            string[] filesMp4 = Directory.GetFiles(pfad, "*.mp4", dirOption);
+            string[] filesMov = Directory.GetFiles(pfad, "*.mov", dirOption);
+
+            AddMedia(fileList, filesAvi, true);
+            AddMedia(fileList, filesWmv, true);
+            AddMedia(fileList, filesMp4, true);
+            AddMedia(fileList, filesMov, true);
 
             Images = fileList.OrderBy(img => img.Name).ToList();
 
             FilterListe();
         }
 
-        private void AddImages(List<ImageItem> fileList, string[] files)
+        private void AddMedia(List<MediaItem> fileList, string[] files, bool isVideo = false)
         {
             foreach (string file in files)
-                fileList.Add(new ImageItem(file, DirectoryPath));
+                fileList.Add(new MediaItem(file, DirectoryPath, isVideo));
         }
 
         // TODO: Der Laserpointer sollte überarbeitet werden, da das Feature 'quick & dirty' implementiert ist
@@ -754,6 +871,29 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
+        private void VideoMuting(object sender = null)
+        {
+            VideoIsMuted = !VideoIsMuted;
+        }
+
+        private void VideoPlay(object sender = null)
+        {
+            MediaPlayerLoadedBehavior = MediaState.Play;
+            MediaPlayerSpielerScreenLoadedBehavior = MediaState.Play;
+        }
+
+        private void VideoPause(object sender = null)
+        {
+            MediaPlayerLoadedBehavior = MediaState.Pause;
+            MediaPlayerSpielerScreenLoadedBehavior = MediaState.Pause;
+        }
+
+        private void VideoStop(object sender = null)
+        {
+            MediaPlayerLoadedBehavior = MediaState.Stop;
+            MediaPlayerSpielerScreenLoadedBehavior = MediaState.Stop;
+        }
+
         private void SetInSlideShowAll(object sender = null)
         {
             foreach (var item in Images)
@@ -771,7 +911,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
         }
 
         private System.Timers.Timer _slideShowTimer = new System.Timers.Timer();
-        private List<ImageItem>.Enumerator _imagesEnumerator = new List<ImageItem>.Enumerator();
+        private List<MediaItem>.Enumerator _imagesEnumerator = new List<MediaItem>.Enumerator();
 
         private void SlideShowStart()
         {
@@ -781,7 +921,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             SlideShowRunning = true;
             _slideShowTimer.Elapsed += SlideShowTimer_Elapsed;
 
-            ImageItem selectedImage = null;
+            MediaItem selectedImage = null;
             if (!string.IsNullOrEmpty(SelectedImagePath))
                 selectedImage = Images.Where(img => img.Pfad == SelectedImagePath).FirstOrDefault();
 
@@ -843,6 +983,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
         }
 
         private Base.CommandBase onShowMap = null;
+
         public Base.CommandBase OnShowMap
         {
             get
@@ -869,9 +1010,9 @@ namespace MeisterGeister.ViewModel.SpielerScreen
 
     }
 
-    #region // ImageItem
+    #region // MediaItem
 
-    public class ImageItem : ViewModel.Base.ViewModelBase
+    public class MediaItem : ViewModel.Base.ViewModelBase
     {
         /// <summary>
         /// Eine Zusammenführung aller durchsuchbaren Felder.
@@ -904,7 +1045,17 @@ namespace MeisterGeister.ViewModel.SpielerScreen
             }
         }
 
-        public ImageItem(string file, string rootDir)
+        public bool IsVideo { get; set; }
+
+        public bool IsImage
+        {
+            get
+            {
+                return !IsVideo;
+            }
+        }
+
+        public MediaItem(string file, string rootDir, bool isVideo = false)
         {
             Pfad = file;
             string dirTags = file.Remove(0, rootDir.Length + 1)
@@ -912,6 +1063,7 @@ namespace MeisterGeister.ViewModel.SpielerScreen
                 .Replace("\\", " \\ "); // Unterverzeihnisse als Namenstags hinzufügen
             _name = dirTags + Path.GetFileNameWithoutExtension(file);
             IsInSlideShow = true;
+            IsVideo = isVideo;
 
             SetSuchtext();
         }

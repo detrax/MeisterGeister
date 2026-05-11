@@ -1331,7 +1331,7 @@ namespace MeisterGeister.View.Bodenplan
         private void _listBoxDirectory_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if ((e.Source as ListBox).SelectedItem == null) return;
-            ImageItem iItem = e.AddedItems[0] as ImageItem;
+            MediaItem iItem = e.AddedItems[0] as MediaItem;
             try
             {
                 if (iItem != null)

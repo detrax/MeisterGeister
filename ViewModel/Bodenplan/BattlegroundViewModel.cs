@@ -691,15 +691,15 @@ namespace MeisterGeister.ViewModel.Bodenplan
 
         #region Thumbnails Images
 
-        private List<ImageItem> _images = null;
-        public List<ImageItem> Images
+        private List<MediaItem> _images = null;
+        public List<MediaItem> Images
         {
             get { return _images; }
             set { Set(ref _images, value); }
         }
 
-        private List<ImageItem> _filteredImages = null;
-        public List<ImageItem> FilteredImages
+        private List<MediaItem> _filteredImages = null;
+        public List<MediaItem> FilteredImages
         {
             get { return _filteredImages; }
             set { Set(ref _filteredImages, value); }
@@ -735,7 +735,7 @@ namespace MeisterGeister.ViewModel.Bodenplan
             string[] filesTif = Directory.GetFiles(pfad, "*.tif", dirOption);
             string[] filesTiff = Directory.GetFiles(pfad, "*.tiff", dirOption);
 
-            List<ImageItem> fileList = new List<ImageItem>();
+            List<MediaItem> fileList = new List<MediaItem>();
             AddImages(fileList, filesBmp, pfad);
             AddImages(fileList, filesBmp, pfad);
             AddImages(fileList, filesGif, pfad);
@@ -751,10 +751,10 @@ namespace MeisterGeister.ViewModel.Bodenplan
             FilterListe();
         }
 
-        private void AddImages(List<ImageItem> fileList, string[] files, string DirectoryPath)
+        private void AddImages(List<MediaItem> fileList, string[] files, string DirectoryPath)
         {
             foreach (string file in files)
-                fileList.Add(new ImageItem(file, DirectoryPath));
+                fileList.Add(new MediaItem(file, DirectoryPath));
         }
 
         private void FilterListe()

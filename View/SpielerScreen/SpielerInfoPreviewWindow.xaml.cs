@@ -141,7 +141,7 @@ namespace MeisterGeister.View.SpielerScreen
 
         private void ButtonBildZeigen_Click(object sender, RoutedEventArgs e)
         {
-            VM.ShowImage();
+            VM.ShowMedia();
         }
 
         private void ButtonTextZeigen_Click(object sender, RoutedEventArgs e)

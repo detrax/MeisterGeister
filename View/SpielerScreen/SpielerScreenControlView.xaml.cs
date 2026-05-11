@@ -159,8 +159,8 @@ namespace MeisterGeister.View.SpielerScreen
 
         private void _listBoxDirectory_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (VM.SelectedImageObject != null)
-                VM.ShowImage();
+            if (VM.SelectedMediaObject != null)
+                VM.ShowMedia();
         }
     }
 }
